@@ -1,0 +1,15 @@
+// Waybar custom battery module (icon + percentage + power line, with color gradient).
+// How to use:
+// 1) Copy the script from ~/rice/waybar-battery-gradient.sh to ~/.config/waybar/scripts/battery-gradient.sh
+//    and make it executable: chmod +x ~/.config/waybar/scripts/battery-gradient.sh
+// 2) In ~/.config/waybar/config.jsonc, add "custom/battery" to modules-right (or left/center).
+// 3) Paste the "custom/battery" block below into the root of your config.
+// 4) (Optional) Add CSS from ~/rice/waybar-battery-gradient.css to your style.css.
+// 5) Restart Waybar: pkill waybar; waybar
+
+"custom/battery": {
+  "exec": "~/.config/waybar/scripts/battery-gradient.sh",
+  "return-type": "json",
+  "interval": 10,
+  "markup": "pango"
+}
