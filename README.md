@@ -1,12 +1,34 @@
-# rice
+# Omarchy tweaks
 
-This folder contains scripts/projects to customize my Omarchy configuration.
+Personal scripts and tweaks for an Omarchy + Hyprland setup.
 
 ## Contents
 
 - `battery-display/` : Waybar script + config to display a gradient battery.
+- `menu/` : Rofi-based Omarchy launcher (Alt+Space).
 
-## Quick use
+## Menu
 
-1) Open `battery-display/` and read the script.
-2) Run the script or integrate it into Waybar based on your setup.
+Files:
+- `menu/menu-rofi.sh` : launcher script.
+- `menu/menu-rofi.rasi` : Rofi theme used by the launcher.
+
+Dependencies:
+- Omarchy scripts (`omarchy-menu`, `omarchy-launch-*`, `omarchy-font-menu`, etc.).
+- Hyprland (`hyprctl`) for floating windows on launch.
+- Rofi (`rofi` or `rofi-wayland`).
+- Runtime app cache: `~/.cache/omarchy-menu-apps.cache`.
+- Runtime theme path: `~/.config/rofi/menu-rofi.rasi`.
+
+Usage:
+- Run directly: `menu/menu-rofi.sh`
+- Bind in Hyprland (example): `bindd = ALT, SPACE, Omarchy menu, exec, /absolute/path/to/menu/menu-rofi.sh`
+
+Notes:
+- The app cache is a tab-separated list of `label`, `desktop_id`, and `icon`.
+  Generate it with `menu-refresh-app-cache`. It is kept up to date by
+  the user systemd path `omarchy-menu-apps.path` (if enabled).
+- You can remove the Omarchy-specific entries and replace them with your own
+  commands to make the menu work without Omarchy.
+- You can replace `menu/menu-rofi.sh` with any other launcher script; update
+  your Hyprland binding accordingly.

@@ -86,10 +86,100 @@ elif [ "$status" = "Discharging" ]; then
   marker="↓"
 fi
 
-# Gradient from red (#ff0000) to green (#00ff00).
-r=$(awk -v c="$capacity_raw" 'BEGIN {printf "%d", 255 - (255 * c / 100)}')
-g=$(awk -v c="$capacity_raw" 'BEGIN {printf "%d", 255 * c / 100}')
-b=0
+# Gradient using a 4-stop palette (green → yellow → orange → red) in HSL.
+# Stops: #93c47d, #ffd966, #f6b26b, #e06666
+h0=102; s0=38; l0=63
+h1=45;  s1=100; l1=70
+h2=31;  s2=89;  l2=69
+h3=0;   s3=66;  l3=64
+
+if [ "$capacity_raw" -ge 75 ]; then
+  t=$(awk -v c="$capacity_raw" 'BEGIN {printf "%.4f", (c-75)/25}')
+  h=$(awk -v t="$t" -v a="$h0" -v b="$h1" 'BEGIN {printf "%.4f", a + (b-a)*t}')
+  s=$(awk -v t="$t" -v a="$s0" -v b="$s1" 'BEGIN {printf "%.4f", a + (b-a)*t}')
+  l=$(awk -v t="$t" -v a="$l0" -v b="$l1" 'BEGIN {printf "%.4f", a + (b-a)*t}')
+elif [ "$capacity_raw" -ge 50 ]; then
+  t=$(awk -v c="$capacity_raw" 'BEGIN {printf "%.4f", (c-50)/25}')
+  h=$(awk -v t="$t" -v a="$h1" -v b="$h2" 'BEGIN {printf "%.4f", a + (b-a)*t}')
+  s=$(awk -v t="$t" -v a="$s1" -v b="$s2" 'BEGIN {printf "%.4f", a + (b-a)*t}')
+  l=$(awk -v t="$t" -v a="$l1" -v b="$l2" 'BEGIN {printf "%.4f", a + (b-a)*t}')
+elif [ "$capacity_raw" -ge 25 ]; then
+  t=$(awk -v c="$capacity_raw" 'BEGIN {printf "%.4f", (c-25)/25}')
+  h=$(awk -v t="$t" -v a="$h2" -v b="$h3" 'BEGIN {printf "%.4f", a + (b-a)*t}')
+  s=$(awk -v t="$t" -v a="$s2" -v b="$s3" 'BEGIN {printf "%.4f", a + (b-a)*t}')
+  l=$(awk -v t="$t" -v a="$l2" -v b="$l3" 'BEGIN {printf "%.4f", a + (b-a)*t}')
+else
+  t=$(awk -v c="$capacity_raw" 'BEGIN {printf "%.4f", c/25}')
+  h=$h3; s=$s3; l=$l3
+fi
+
+# Convert HSL → RGB
+r=$(awk -v h="$h" -v s="$s" -v l="$l" '
+function hue2rgb(p, q, t) {
+  if (t < 0) t += 1;
+  if (t > 1) t -= 1;
+  if (t < 1/6) return p + (q - p) * 6 * t;
+  if (t < 1/2) return q;
+  if (t < 2/3) return p + (q - p) * (2/3 - t) * 6;
+  return p;
+}
+BEGIN {
+  h /= 360.0; s /= 100.0; l /= 100.0;
+  if (s == 0) {
+    r = g = b = l;
+  } else {
+    q = (l < 0.5) ? (l * (1 + s)) : (l + s - l * s);
+    p = 2 * l - q;
+    r = hue2rgb(p, q, h + 1/3);
+    g = hue2rgb(p, q, h);
+    b = hue2rgb(p, q, h - 1/3);
+  }
+  printf "%d", r * 255
+}')
+g=$(awk -v h="$h" -v s="$s" -v l="$l" '
+function hue2rgb(p, q, t) {
+  if (t < 0) t += 1;
+  if (t > 1) t -= 1;
+  if (t < 1/6) return p + (q - p) * 6 * t;
+  if (t < 1/2) return q;
+  if (t < 2/3) return p + (q - p) * (2/3 - t) * 6;
+  return p;
+}
+BEGIN {
+  h /= 360.0; s /= 100.0; l /= 100.0;
+  if (s == 0) {
+    r = g = b = l;
+  } else {
+    q = (l < 0.5) ? (l * (1 + s)) : (l + s - l * s);
+    p = 2 * l - q;
+    r = hue2rgb(p, q, h + 1/3);
+    g = hue2rgb(p, q, h);
+    b = hue2rgb(p, q, h - 1/3);
+  }
+  printf "%d", g * 255
+}')
+b=$(awk -v h="$h" -v s="$s" -v l="$l" '
+function hue2rgb(p, q, t) {
+  if (t < 0) t += 1;
+  if (t > 1) t -= 1;
+  if (t < 1/6) return p + (q - p) * 6 * t;
+  if (t < 1/2) return q;
+  if (t < 2/3) return p + (q - p) * (2/3 - t) * 6;
+  return p;
+}
+BEGIN {
+  h /= 360.0; s /= 100.0; l /= 100.0;
+  if (s == 0) {
+    r = g = b = l;
+  } else {
+    q = (l < 0.5) ? (l * (1 + s)) : (l + s - l * s);
+    p = 2 * l - q;
+    r = hue2rgb(p, q, h + 1/3);
+    g = hue2rgb(p, q, h);
+    b = hue2rgb(p, q, h - 1/3);
+  }
+  printf "%d", b * 255
+}')
 color=$(printf "#%02x%02x%02x" "$r" "$g" "$b")
 
 power_line=" ${power_w}W"

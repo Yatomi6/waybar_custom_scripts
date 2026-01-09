@@ -1,0 +1,108 @@
+* {
+  background: #2e3440;
+  foreground: #d8dee9;
+  accent: #81a1c1;
+  border: #4c566a;
+  selection: #4c566a;
+  dim: rgba(0,0,0,0.0);
+  font: "JetBrainsMono Nerd Font 12";
+  text-color: @foreground;
+  background-color: transparent;
+}
+
+window {
+  fullscreen: true;
+  transparency: "real";
+  background-color: @dim;
+  padding: 0px;
+}
+
+mainbox {
+  orientation: vertical;
+  children: [ dummy-v, rowbox ];
+  spacing: 0px;
+  padding: 0px;
+}
+
+dummy-v {
+  expand: true;
+}
+
+rowbox {
+  orientation: horizontal;
+  children: [ dummy-left, contentbox, dummy-right ];
+  spacing: 0px;
+}
+
+dummy-left {
+  expand: true;
+}
+
+dummy-right {
+  expand: true;
+}
+
+contentbox {
+  orientation: vertical;
+  width: 720px;
+  spacing: 0px;
+  margin: 0px 0px 24px 0px;
+  children: [ listview, inputbar ];
+}
+
+listview {
+  background-color: @background;
+  border: 1px;
+  border-color: @border;
+  border-radius: 12px 12px 0px 0px;
+  padding: 12px 16px;
+  fixed-height: true;
+  height: 360px;
+  spacing: 4px;
+  scrollbar: true;
+}
+
+inputbar {
+  background-color: @background;
+  border: 1px;
+  border-color: @border;
+  border-radius: 0px 0px 12px 12px;
+  padding: 10px 16px;
+}
+
+prompt {
+  text-color: @accent;
+}
+
+textbox-prompt-colon {
+  text-color: @accent;
+}
+
+entry {
+  text-color: @foreground;
+}
+
+element {
+  padding: 6px 8px;
+  background-color: transparent;
+  text-color: @foreground;
+  orientation: horizontal;
+  children: [ element-icon, element-text ];
+  spacing: 8px;
+}
+
+element selected {
+  background-color: @selection;
+  text-color: @foreground;
+}
+
+element-icon {
+  size: 20px;
+  background-color: transparent;
+}
+
+element-text {
+  text-color: inherit;
+  vertical-align: 0.5;
+  background-color: transparent;
+}
