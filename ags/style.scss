@@ -1,0 +1,69 @@
+* {
+  font-family: "JetBrainsMono Nerd Font", "Symbols Nerd Font", sans-serif;
+  color: #d8dee9;
+}
+
+window#main-bar {
+  background: transparent;
+}
+
+.workspace-button {
+  background: transparent;
+  border: none;
+  box-shadow: none;
+  padding: 0;
+}
+
+.workspace-button.empty {
+  opacity: 0.5;
+}
+
+.battery {
+  background: transparent;
+  border: none;
+  border-radius: 0;
+  margin: 0;
+  padding: 0;
+  box-shadow: none;
+}
+
+.wifi {
+  background: transparent;
+  border: none;
+  border-radius: 0;
+  margin: 0;
+  padding: 0;
+  box-shadow: none;
+}
+
+.wifi-speed label {
+  margin: 0;
+  padding: 0;
+}
+
+.wifi-tray-menu {
+  background: #2e3440;
+  border: 1px solid #3b4252;
+  border-radius: 8px;
+  padding: 6px;
+}
+
+.wifi-tray-menu menuitem {
+  color: #d8dee9;
+  padding: 4px 8px;
+  border-radius: 6px;
+}
+
+.wifi-tray-menu menuitem:hover {
+  background: #3b4252;
+}
+
+.wifi-tray-menu menuitem:disabled {
+  color: #7f8896;
+}
+
+.wifi-tray-menu separator {
+  background: #3b4252;
+  min-height: 1px;
+  margin: 4px 0;
+}
