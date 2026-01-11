@@ -4,8 +4,29 @@ Personal scripts and tweaks for an Omarchy + Hyprland setup.
 
 ## Contents
 
-- `battery-display/` : Waybar script + config to display a gradient battery.
+- `waybar/battery/` : Waybar script + config for gradient battery display.
+- `waybar/downloads/` : Waybar scripts to monitor and open downloads.
 - `menu/` : Rofi-based Omarchy launcher (Alt+Space).
+
+## Waybar battery
+
+Files:
+- `waybar/battery/waybar-battery-gradient.sh` : script used by Waybar.
+- `waybar/battery/waybar-battery-gradient.jsonc` : config snippet.
+
+Usage:
+- Copy the script to `~/.config/waybar/scripts/battery-gradient.sh`.
+- Merge the JSONC snippet into `~/.config/waybar/config.jsonc`.
+
+## Waybar downloads
+
+Files:
+- `waybar/downloads/waybar-downloads-watch.sh` : download monitor (Waybar module).
+- `waybar/downloads/waybar-downloads-open.sh` : open current download folder.
+
+Notes:
+- Config file: `~/.config/waybar/download-dirs.conf`
+- State cache: `~/.cache/waybar-downloads/`
 
 ## Menu
 
