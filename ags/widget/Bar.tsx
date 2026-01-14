@@ -7,8 +7,10 @@ import Audio from "./Audio"
 import Workspaces from "./Workspaces"
 import Wifi from "./Wifi"
 import {
+  BAR_CONTENT_HEIGHT,
   BAR_CSS,
   BAR_HEIGHT,
+  BAR_TEXT_COLOR,
   METERS_BATTERY_GAP,
   MODULE_SPACING,
   WIFI_METERS_GAP,
@@ -16,6 +18,19 @@ import {
 
 export default function Bar(gdkmonitor: Gdk.Monitor) {
   const { TOP, LEFT, RIGHT } = Astal.WindowAnchor
+  const ITEM_PAD = 6
+  const SEP_GAP = 0
+  const SEP_WIDTH = 0
+  const RightItem = ({ children }: { children: JSX.Element | JSX.Element[] }) => (
+    <box
+      class="bar-item"
+      valign={Gtk.Align.CENTER}
+      css={`min-height: ${BAR_CONTENT_HEIGHT}px; padding: 0 ${ITEM_PAD}px;`}
+    >
+      {children}
+    </box>
+  )
+  const Separator = () => null
 
   return (
     <window
@@ -37,23 +52,26 @@ export default function Bar(gdkmonitor: Gdk.Monitor) {
         <box
           $type="end"
           class="bar-right"
-          spacing={MODULE_SPACING}
+          spacing={0}
           halign={Gtk.Align.END}
         >
-          <box css={`margin-right: ${WIFI_METERS_GAP}px;`} valign={Gtk.Align.CENTER}>
+          <RightItem>
             <Wifi />
-          </box>
-          <box
-            class="meters"
-            orientation={Gtk.Orientation.VERTICAL}
-            spacing={0}
-            valign={Gtk.Align.CENTER}
-            css={`margin-right: ${METERS_BATTERY_GAP}px;`}
-          >
-            <Brightness />
-            <Audio />
-          </box>
-          <Battery />
+          </RightItem>
+          <RightItem>
+            <box
+              class="meters"
+              orientation={Gtk.Orientation.VERTICAL}
+              spacing={0}
+              valign={Gtk.Align.CENTER}
+            >
+              <Brightness />
+              <Audio />
+            </box>
+          </RightItem>
+          <RightItem>
+            <Battery />
+          </RightItem>
         </box>
       </centerbox>
     </window>

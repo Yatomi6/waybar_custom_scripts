@@ -12,9 +12,9 @@ export const WORKSPACE_SCALE = 0.9
 export const CLOCK_SCALE = 0.9
 
 export const METER_SIZES = {
-  width: Math.max(26, Math.round(42 * WIDGET_FACTOR)),
-  height: Math.max(2, Math.round(3 * SCALE)),
-  radius: Math.max(1, Math.round(2 * SCALE)),
+  width: Math.max(26, Math.round(48 * WIDGET_FACTOR)),
+  height: Math.max(2, Math.round(4 * SCALE)),
+  radius: Math.max(1, Math.round(3 * SCALE)),
   gap: Math.max(2, Math.round(4 * SCALE)),
   icon: Math.max(9, Math.round(11 * WIDGET_FACTOR)),
   text: Math.max(9, Math.round(11 * WIDGET_FACTOR)),

@@ -1,7 +1,8 @@
-import { Gtk } from "ags/gtk3"
+import { Gtk, Gdk } from "ags/gtk3"
 import { createPoll } from "ags/time"
 import { execAsync } from "ags/process"
 import GLib from "gi://GLib?version=2.0"
+import { createComputed, createState } from "gnim"
 import {
   BAR_TEXT_COLOR,
   METER_COLORS,
@@ -54,37 +55,61 @@ function darken(hex: string, factor = 0.5) {
   return `#${toHex(r)}${toHex(g)}${toHex(b)}`
 }
 
-function getClickPercent(widget: Gtk.Widget, event: unknown) {
-  const alloc = widget.get_allocation()
-  const width = Math.max(1, alloc.width)
-  let x = 0
+function extractX(coords: unknown): number | null {
+  if (!Array.isArray(coords) || coords.length === 0) return null
+  if (typeof coords[0] === "boolean") {
+    return typeof coords[1] === "number" ? coords[1] : null
+  }
+  return typeof coords[0] === "number" ? coords[0] : null
+}
 
+function getEventX(widget: Gtk.Widget, event: unknown) {
   const evt = event as {
     x?: number
     get_position?: () => number[]
     get_coords?: () => number[]
+    get_root_coords?: () => number[]
   }
 
-  if (typeof evt?.x === "number") {
-    x = evt.x
-  } else if (evt?.get_coords) {
-    const coords = evt.get_coords()
-    if (Array.isArray(coords) && coords.length >= 2) {
-      x = typeof coords[0] === "boolean" ? coords[1] ?? 0 : coords[0] ?? 0
-    }
-  } else if (evt?.get_position) {
-    const coords = evt.get_position()
-    if (Array.isArray(coords) && coords.length >= 2) {
-      x = typeof coords[0] === "boolean" ? coords[1] ?? 0 : coords[0] ?? 0
-    }
-  }
+  const localX =
+    extractX(evt?.get_coords?.()) ??
+    extractX(evt?.get_position?.()) ??
+    (typeof evt?.x === "number" ? evt.x : null)
 
-  if (x > width) {
-    x -= alloc.x
-  }
+  if (localX !== null) return localX
 
+  const rootX = extractX(evt?.get_root_coords?.())
+  if (rootX === null) return 0
+
+  const origin =
+    widget.get_window?.()?.get_origin?.() ??
+    widget.get_toplevel?.()?.get_window?.()?.get_origin?.()
+  const originX = extractX(origin)
+  if (originX === null) return rootX
+
+  return rootX - originX
+}
+
+function getClickPercent(widget: Gtk.Widget, event: unknown) {
+  const width = Math.max(1, widget.get_allocation().width)
+  const x = getEventX(widget, event)
+  if (x <= 0) return 0
+  if (x >= width) return 100
   const clamped = clamp(x, 0, width)
   return clamp(Math.round((clamped / width) * 100), 0, 100)
+}
+
+function getButton(event: unknown) {
+  const evt = event as {
+    button?: number
+    get_button?: () => [boolean, number]
+  }
+  if (typeof evt?.button === "number") return evt.button
+  if (evt?.get_button) {
+    const result = evt.get_button()
+    if (Array.isArray(result) && result.length >= 2) return result[1] ?? 0
+  }
+  return 0
 }
 
 function readText(path: string): string | null {
@@ -176,6 +201,21 @@ function computeBrightnessState(): BrightnessState {
 }
 
 export default function Brightness() {
+  let dragging = false
+  let lastSet = -1
+  let clearTimer: ReturnType<typeof setTimeout> | null = null
+  const [dragPercent, setDragPercent] = createState<number | null>(null)
+  const applyBrightness = (widget: Gtk.Widget, event: unknown) => {
+    if (clearTimer) {
+      clearTimeout(clearTimer)
+      clearTimer = null
+    }
+    const percent = getClickPercent(widget, event)
+    setDragPercent(percent)
+    if (percent === lastSet) return
+    lastSet = percent
+    execAsync(`brightnessctl set ${percent}%`).catch(() => null)
+  }
   const state = createPoll<BrightnessState>(
     {
       visible: false,
@@ -186,6 +226,15 @@ export default function Brightness() {
     UPDATE_MS,
     computeBrightnessState,
   )
+
+  const percentValue = createComputed(() => {
+    const override = dragPercent()
+    return override === null ? state().percent : override
+  })
+  const percentText = createComputed(() => {
+    const override = dragPercent()
+    return override === null ? state().percentText : `${override}%`
+  })
 
   return (
     <box
@@ -235,7 +284,7 @@ export default function Brightness() {
       >
         <label
           class="brightness-percent"
-          label={state.as((s) => s.percentText)}
+          label={percentText}
           width_chars={4}
           xalign={1}
           css={`font-size: ${METER_SIZES.text}px; margin: -${WIDGET_COMPRESS_Y}px 0; padding: 0 ${TEXT_GAP}px 0 0; color: ${BAR_TEXT_COLOR};`}
@@ -246,23 +295,51 @@ export default function Brightness() {
         visible_window={false}
         width_request={METER_SIZES.width}
         height_request={METER_SIZES.height}
+        events={
+          Gdk.EventMask.POINTER_MOTION_MASK |
+          Gdk.EventMask.BUTTON1_MOTION_MASK |
+          Gdk.EventMask.BUTTON_PRESS_MASK |
+          Gdk.EventMask.BUTTON_RELEASE_MASK
+        }
         onButtonPressEvent={(widget, event) => {
-          const percent = getClickPercent(widget, event)
-          execAsync(`brightnessctl set ${percent}%`).catch(() => null)
+          dragging = getButton(event) === 1
+          if (dragging) {
+            applyBrightness(widget, event)
+          }
+          return true
+        }}
+        onButtonReleaseEvent={() => {
+          dragging = false
+          if (clearTimer) {
+            clearTimeout(clearTimer)
+          }
+          clearTimer = setTimeout(() => {
+            setDragPercent(null)
+            clearTimer = null
+          }, 150)
+          return true
+        }}
+        onMotionNotifyEvent={(widget, event) => {
+          if (!dragging) return false
+          applyBrightness(widget, event)
           return true
         }}
       >
         <box
           class="brightness-meter"
           valign={Gtk.Align.CENTER}
-          css={`min-width: ${METER_SIZES.width}px; min-height: ${METER_SIZES.height}px; background-color: ${darken(
-            METER_COLORS.brightness,
-          )}; border-radius: ${METER_SIZES.radius}px; margin: 0; padding: 0;`}
+          css={createComputed(
+            () =>
+              `min-width: ${METER_SIZES.width}px; min-height: ${METER_SIZES.height}px; background-color: ${darken(
+                METER_COLORS.brightness,
+              )}; border-radius: ${METER_SIZES.radius}px; margin: 0; padding: 0;`,
+          )}
         >
           <box
             class="brightness-meter-fill"
-            css={state.as((s) => {
-              const width = Math.round((METER_SIZES.width * s.percent) / 100)
+            css={createComputed(() => {
+              const percent = percentValue()
+              const width = Math.round((METER_SIZES.width * percent) / 100)
               return `min-width: ${width}px; min-height: ${METER_SIZES.height}px; background-color: ${METER_COLORS.brightness}; border-radius: ${METER_SIZES.radius}px; margin: 0; padding: 0;`
             })}
           />
