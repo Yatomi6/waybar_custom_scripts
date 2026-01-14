@@ -4,6 +4,7 @@ import Battery from "./Battery"
 import Brightness from "./Brightness"
 import Clock from "./Clock"
 import Audio from "./Audio"
+import HoverPanel from "./HoverPanel"
 import Workspaces from "./Workspaces"
 import Wifi from "./Wifi"
 import {
@@ -46,10 +47,11 @@ export default function Bar(gdkmonitor: Gdk.Monitor) {
       layer={Astal.Layer.TOP}
       application={app}
     >
-      <centerbox class="bar" css={BAR_CSS} height_request={BAR_HEIGHT}>
-        <box $type="start" class="bar-left" spacing={MODULE_SPACING}>
+        <centerbox class="bar" css={BAR_CSS} height_request={BAR_HEIGHT}>
+        <box $type="start" class="bar-left" spacing={0}>
+          <HoverPanel />
           <Workspaces monitor={gdkmonitor} />
-        </box>
+          </box>
         <box $type="center" class="bar-center" spacing={MODULE_SPACING}>
           <Clock />
         </box>

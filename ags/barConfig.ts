@@ -1,6 +1,6 @@
 const BASE_HEIGHT = 30
 
-export const BAR_HEIGHT = 60
+export const BAR_HEIGHT = 20
 export const BAR_COLOR = "#2e3440"
 export const BAR_TEXT_COLOR = "#d8dee9"
 
@@ -67,6 +67,25 @@ export const WORKSPACE_SIZES = {
   paddingX: Math.max(4, Math.round(6 * WIDGET_FACTOR * WORKSPACE_SCALE)),
   marginX: Math.max(1, Math.round(2 * WIDGET_FACTOR * WORKSPACE_SCALE)),
   minWidth: Math.max(9, Math.round(9 * WIDGET_FACTOR * WORKSPACE_SCALE)),
+}
+
+export const HOVER_PANEL_SIZES = {
+  icon: Math.max(14, Math.round(18 * WIDGET_FACTOR)),
+  text: Math.max(9, Math.round(12 * WIDGET_FACTOR)),
+  gap: Math.max(2, Math.round(4 * SCALE)),
+  innerGap: Math.max(2, Math.round(4 * SCALE)),
+  triggerPadRight: Math.max(MODULE_SPACING, Math.round(18 * SCALE)),
+  paddingX: Math.max(2, Math.round(4 * SCALE)),
+  rowGap: Math.max(2, Math.round(4 * SCALE)),
+  rowPaddingX: Math.max(3, Math.round(6 * SCALE)),
+  rowPaddingY: Math.max(2, Math.round(4 * SCALE)),
+  panelPaddingX: Math.max(3, Math.round(6 * SCALE)),
+  panelPaddingY: Math.max(2, Math.round(4 * SCALE)),
+  transitionMs: Math.max(120, Math.round(180 * SCALE)),
+  hideDelayMs: Math.max(360, Math.round(600 * SCALE)),
+  widthChars: Math.max(9, Math.round(11 * SCALE)),
+  buttonPadX: Math.max(2, Math.round(4 * SCALE)),
+  popupOffsetY: Math.max(2, Math.round(4 * SCALE)),
 }
 
 export const BATTERY_SIZES = {

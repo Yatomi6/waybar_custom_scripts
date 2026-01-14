@@ -36,6 +36,44 @@ window#main-bar {
   box-shadow: none;
 }
 
+.hover-panel {
+  background: transparent;
+  border: none;
+  border-radius: 0;
+  margin: 0;
+  padding: 0;
+  box-shadow: none;
+}
+
+.hover-panel-row {
+  background: transparent;
+  margin: 0;
+  padding: 0;
+}
+
+.hover-panel-popup {
+  background: transparent;
+  border: none;
+  margin: 0;
+  padding: 0;
+}
+
+.hover-panel-popup-content label {
+  margin: 0;
+  padding: 0;
+}
+
+.hover-panel-popup-content button {
+  background: transparent;
+  border: none;
+  box-shadow: none;
+  padding: 0;
+}
+
+.hover-panel-window {
+  background: transparent;
+}
+
 .wifi-speed label {
   margin: 0;
   padding: 0;
