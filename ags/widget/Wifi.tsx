@@ -17,6 +17,9 @@ import {
 const UPDATE_MS = 1000
 const ICONS = ["󰤯", "󰤟", "󰤢", "󰤥", "󰤨"]
 const ICON_DISCONNECTED = "󰤮"
+const BT_ICON_DEFAULT = ""
+const BT_ICON_CONNECTED = "󰂱"
+const BT_ICON_OFF = "󰂲"
 const NM_APPLET_DEST = "org.freedesktop.network-manager-applet"
 const NM_APPLET_MENU_PATH = "/org/ayatana/NotificationItem/nm_applet/Menu"
 const DBUSMENU_IFACE = "com.canonical.dbusmenu"
@@ -29,6 +32,9 @@ const BOTTOM_LINE_PX = Math.max(5, CONTENT_HEIGHT - TOP_LINE_PX)
 
 const ICON_FONT = Math.max(6, Math.round(TOP_LINE_PX * 1.0 * FONT_SCALE))
 const RATE_FONT = Math.max(5, Math.round(BOTTOM_LINE_PX * 1.0 * FONT_SCALE))
+const BT_ICON_FONT = Math.max(5, Math.round(BOTTOM_LINE_PX * 0.95 * FONT_SCALE))
+const ICON_COL_WIDTH = Math.max(ICON_FONT, BT_ICON_FONT) + WIFI_SPACING_X * 2
+const BT_ICON_SHIFT = Math.max(1, Math.round(WIFI_SPACING_X * 0.6))
 
 type WifiState = {
   visible: boolean
@@ -39,6 +45,12 @@ type WifiState = {
   icon: string
   rxText: string
   txText: string
+  tooltip: string
+}
+
+type BluetoothState = {
+  visible: boolean
+  icon: string
   tooltip: string
 }
 
@@ -104,6 +116,7 @@ type MenuNode = {
 let menuProxy: Gio.DBusProxy | null = null
 let activeMenu: Gtk.Menu | null = null
 let trayMenu: Gtk.Menu | null = null
+let bluezProxy: Gio.DBusProxy | null = null
 
 function getTrayMenu() {
   if (trayMenu) return trayMenu
@@ -137,6 +150,89 @@ function getMenuProxy(): Gio.DBusProxy | null {
   } catch (_) {
     menuProxy = null
     return null
+  }
+}
+
+function getBluezProxy(): Gio.DBusProxy | null {
+  if (bluezProxy) return bluezProxy
+  try {
+    bluezProxy = Gio.DBusProxy.new_sync(
+      Gio.DBus.system,
+      Gio.DBusProxyFlags.NONE,
+      null,
+      "org.bluez",
+      "/",
+      "org.freedesktop.DBus.ObjectManager",
+      null,
+    )
+    return bluezProxy
+  } catch (_) {
+    bluezProxy = null
+    return null
+  }
+}
+
+function computeBluetoothState(): BluetoothState {
+  const proxy = getBluezProxy()
+  if (!proxy) {
+    return { visible: false, icon: "", tooltip: "" }
+  }
+
+  try {
+    const result = proxy.call_sync(
+      "GetManagedObjects",
+      null,
+      Gio.DBusCallFlags.NONE,
+      1000,
+      null,
+    )
+    const unpacked = result?.deepUnpack?.()
+    const objects =
+      (Array.isArray(unpacked) ? unpacked[0] : unpacked) as Record<
+        string,
+        Record<string, Record<string, unknown>>
+      >
+
+    if (!objects || typeof objects !== "object") {
+      return { visible: false, icon: "", tooltip: "" }
+    }
+
+    let hasAdapter = false
+    let powered = false
+    let connected = 0
+
+    for (const ifaces of Object.values(objects)) {
+      const adapter = ifaces["org.bluez.Adapter1"]
+      if (adapter) {
+        hasAdapter = true
+        const poweredValue = unpack(adapter.Powered)
+        powered = poweredValue === true || poweredValue === 1
+      }
+      const device = ifaces["org.bluez.Device1"]
+      if (device) {
+        const connectedValue = unpack(device.Connected)
+        if (connectedValue === true || connectedValue === 1) {
+          connected += 1
+        }
+      }
+    }
+
+    if (!hasAdapter) {
+      return { visible: false, icon: "", tooltip: "" }
+    }
+
+    if (!powered) {
+      return { visible: true, icon: BT_ICON_OFF, tooltip: "Bluetooth off" }
+    }
+
+    const icon = connected > 0 ? BT_ICON_CONNECTED : BT_ICON_DEFAULT
+    const tooltip =
+      connected > 0
+        ? `Bluetooth: ${connected} connected`
+        : "Bluetooth on"
+    return { visible: true, icon, tooltip }
+  } catch (_) {
+    return { visible: false, icon: "", tooltip: "" }
   }
 }
 
@@ -487,6 +583,11 @@ export default function Wifi() {
     UPDATE_MS,
     computeWifiState,
   )
+  const bluetooth = createPoll<BluetoothState>(
+    { visible: false, icon: "", tooltip: "" },
+    UPDATE_MS,
+    computeBluetoothState,
+  )
 
   return (
     <eventbox
@@ -500,14 +601,14 @@ export default function Wifi() {
       }}
     >
       <box
-        orientation={Gtk.Orientation.HORIZONTAL}
-        spacing={WIFI_SPACING_X}
+        orientation={Gtk.Orientation.VERTICAL}
+        spacing={WIFI_SPACING_Y}
         valign={Gtk.Align.CENTER}
       >
         <box
-          class="wifi-speed"
-          orientation={Gtk.Orientation.VERTICAL}
-          spacing={WIFI_SPACING_Y}
+          class="wifi-row"
+          orientation={Gtk.Orientation.HORIZONTAL}
+          spacing={WIFI_SPACING_X}
           valign={Gtk.Align.CENTER}
         >
           <label
@@ -518,20 +619,46 @@ export default function Wifi() {
             css={`font-size: ${RATE_FONT}px; margin: -${WIDGET_COMPRESS_Y}px 0; padding: 0; color: ${BAR_TEXT_COLOR};`}
           />
           <label
+            class="wifi-icon"
+            label={state.as((s) => s.icon)}
+            width_chars={2}
+            xalign={0.5}
+            css={`font-size: ${ICON_FONT}px; margin: -${WIDGET_COMPRESS_Y}px 0; min-width: ${ICON_COL_WIDTH}px; padding: 0; color: ${BAR_TEXT_COLOR};`}
+            valign={Gtk.Align.CENTER}
+          />
+        </box>
+        <box
+          class="wifi-row"
+          orientation={Gtk.Orientation.HORIZONTAL}
+          spacing={WIFI_SPACING_X}
+          valign={Gtk.Align.CENTER}
+        >
+          <label
             class="wifi-up"
             label={state.as((s) => `↑${s.txText}`)}
             width_chars={8}
             xalign={1}
             css={`font-size: ${RATE_FONT}px; margin: -${WIDGET_COMPRESS_Y}px 0; padding: 0; color: ${BAR_TEXT_COLOR};`}
           />
+          <eventbox
+            visible_window={false}
+            visible={bluetooth.as((b) => b.visible)}
+            tooltip_text={bluetooth.as((b) => b.tooltip)}
+            onButtonPressEvent={() => {
+              execAsync("omarchy-launch-bluetooth").catch(() => null)
+              return true
+            }}
+          >
+            <label
+              class="bluetooth-icon"
+              label={bluetooth.as((b) => b.icon)}
+              width_chars={2}
+              xalign={0.5}
+              css={`font-size: ${BT_ICON_FONT}px; margin: -${WIDGET_COMPRESS_Y}px 0 0 ${BT_ICON_SHIFT}px; min-width: ${ICON_COL_WIDTH}px; padding: 0; color: ${BAR_TEXT_COLOR};`}
+              valign={Gtk.Align.CENTER}
+            />
+          </eventbox>
         </box>
-        <label
-          class="wifi-icon"
-          label={state.as((s) => s.icon)}
-          css={`font-size: ${ICON_FONT}px; margin: -${WIDGET_COMPRESS_Y}px 0; padding: 0; color: ${BAR_TEXT_COLOR};`}
-          xalign={0.5}
-          valign={Gtk.Align.CENTER}
-        />
       </box>
     </eventbox>
   )
