@@ -8,6 +8,8 @@ import {
   BAR_TEXT_COLOR,
   BAR_HEIGHT,
   BAR_PADDING_Y,
+  WIFI_SPACING_X,
+  WIFI_SPACING_Y,
   WIDGET_COMPRESS_Y,
   WIDGET_SCALE,
 } from "../barConfig"
@@ -497,11 +499,15 @@ export default function Wifi() {
         return true
       }}
     >
-      <box orientation={Gtk.Orientation.HORIZONTAL} spacing={4} valign={Gtk.Align.CENTER}>
+      <box
+        orientation={Gtk.Orientation.HORIZONTAL}
+        spacing={WIFI_SPACING_X}
+        valign={Gtk.Align.CENTER}
+      >
         <box
           class="wifi-speed"
           orientation={Gtk.Orientation.VERTICAL}
-          spacing={2}
+          spacing={WIFI_SPACING_Y}
           valign={Gtk.Align.CENTER}
         >
           <label

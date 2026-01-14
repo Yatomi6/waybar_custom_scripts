@@ -10,28 +10,32 @@ import {
   BAR_CONTENT_HEIGHT,
   BAR_CSS,
   BAR_HEIGHT,
-  BAR_TEXT_COLOR,
-  METERS_BATTERY_GAP,
+  BAR_ITEM_PAD,
+  BAR_ITEM_PAD_TIGHT,
   MODULE_SPACING,
-  WIFI_METERS_GAP,
 } from "../barConfig"
 
 export default function Bar(gdkmonitor: Gdk.Monitor) {
   const { TOP, LEFT, RIGHT } = Astal.WindowAnchor
-  const ITEM_PAD = 6
-  const SEP_GAP = 0
-  const SEP_WIDTH = 0
-  const RightItem = ({ children }: { children: JSX.Element | JSX.Element[] }) => (
+  const ITEM_PAD = BAR_ITEM_PAD
+  const BATTERY_PAD_RIGHT = BAR_ITEM_PAD_TIGHT
+  const RightItem = ({
+    children,
+    padLeft = ITEM_PAD,
+    padRight = ITEM_PAD,
+  }: {
+    children: JSX.Element | JSX.Element[]
+    padLeft?: number
+    padRight?: number
+  }) => (
     <box
       class="bar-item"
       valign={Gtk.Align.CENTER}
-      css={`min-height: ${BAR_CONTENT_HEIGHT}px; padding: 0 ${ITEM_PAD}px;`}
+      css={`min-height: ${BAR_CONTENT_HEIGHT}px; padding: 0 ${padRight}px 0 ${padLeft}px;`}
     >
       {children}
     </box>
   )
-  const Separator = () => null
-
   return (
     <window
       name="main-bar"
@@ -69,7 +73,7 @@ export default function Bar(gdkmonitor: Gdk.Monitor) {
               <Audio />
             </box>
           </RightItem>
-          <RightItem>
+          <RightItem padRight={BATTERY_PAD_RIGHT}>
             <Battery />
           </RightItem>
         </box>

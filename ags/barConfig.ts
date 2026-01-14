@@ -1,6 +1,6 @@
 const BASE_HEIGHT = 30
 
-export const BAR_HEIGHT = 20
+export const BAR_HEIGHT = 60
 export const BAR_COLOR = "#2e3440"
 export const BAR_TEXT_COLOR = "#d8dee9"
 
@@ -27,8 +27,10 @@ export const METER_COLORS = {
   muted: "#bf616a",
 }
 
-export const BAR_PADDING_Y = 2
+export const BAR_PADDING_Y = Math.max(1, Math.round(2 * SCALE))
 export const BAR_PADDING_X = Math.max(6, Math.round(10 * SCALE))
+export const BAR_ITEM_PAD = Math.max(2, Math.round(6 * SCALE))
+export const BAR_ITEM_PAD_TIGHT = Math.max(0, Math.round(BAR_HEIGHT * 0.02))
 export const BAR_CONTENT_HEIGHT = Math.max(1, BAR_HEIGHT - BAR_PADDING_Y * 2)
 
 export const BAR_CSS = `min-height: ${BAR_CONTENT_HEIGHT}px; background: ${BAR_COLOR}; color: ${BAR_TEXT_COLOR}; padding: ${BAR_PADDING_Y}px ${BAR_PADDING_X}px;`
@@ -36,6 +38,8 @@ export const BAR_CSS = `min-height: ${BAR_CONTENT_HEIGHT}px; background: ${BAR_C
 export const MODULE_SPACING = Math.max(6, Math.round(8 * SCALE))
 export const METERS_BATTERY_GAP = Math.max(4, Math.round(6 * SCALE))
 export const WIFI_METERS_GAP = Math.max(4, Math.round(6 * SCALE))
+export const WIFI_SPACING_X = Math.max(2, Math.round(4 * SCALE))
+export const WIFI_SPACING_Y = Math.max(1, Math.round(2 * SCALE))
 
 export const WORKSPACE_ICONS = {
   active: "󱓻",
