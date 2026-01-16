@@ -1,5 +1,5 @@
 import app from "ags/gtk3/app"
-import { Astal, Gtk, Gdk } from "ags/gtk3"
+import { Gtk, Gdk } from "ags/gtk3"
 import { createComputed } from "gnim"
 import { createPoll } from "ags/time"
 import GLib from "gi://GLib?version=2.0"
@@ -147,7 +147,6 @@ const formatScroll = (value: number) => {
 }
 
 export default function InputStatsWindow(gdkmonitor: Gdk.Monitor) {
-  const { TOP, LEFT, RIGHT, BOTTOM } = Astal.WindowAnchor
   const visible = inputStatsOpen
   const geometry = gdkmonitor.get_geometry()
   const panelMaxWidth = Math.min(720, Math.max(360, geometry.width - 80))
@@ -166,6 +165,7 @@ const panelCss = `background: ${BAR_COLOR}; border: 1px solid #3b4252; border-ra
   const titleCss = `font-size: ${TITLE_TEXT}px; font-weight: 600; margin: -${WIDGET_COMPRESS_Y}px 0; color: ${BAR_TEXT_COLOR};`
   const labelCss = `font-size: ${PANEL_TEXT}px; margin: -${WIDGET_COMPRESS_Y}px 0; color: ${BAR_TEXT_COLOR};`
   const metaCss = `font-size: ${Math.max(8, PANEL_TEXT - 1)}px; margin: -${WIDGET_COMPRESS_Y}px 0; color: ${BAR_TEXT_COLOR};`
+  const closeCss = `font-size: ${Math.max(10, PANEL_TEXT)}px; margin: -${WIDGET_COMPRESS_Y}px 0; color: ${BAR_TEXT_COLOR};`
 
   const nowMs = createPoll(0, 1000, () => Date.now())
 
@@ -280,48 +280,26 @@ const panelCss = `background: ${BAR_COLOR}; border: 1px solid #3b4252; border-ra
     )
   }
 
-  const onBackdropClick = () => {
-    closeInputStats()
-    return true
-  }
-
   return (
     <window
       name="input-stats"
       class="input-stats-window"
-      gdkmonitor={gdkmonitor}
-      exclusivity={Astal.Exclusivity.IGNORE}
-      anchor={TOP | LEFT | RIGHT | BOTTOM}
-      layer={Astal.Layer.OVERLAY}
       visible={visible.as((isVisible) => isVisible)}
       application={app}
+      title="Input stats"
+      default_width={panelMaxWidth}
+      resizable={false}
+      decorated={true}
     >
-      <eventbox
-        class="input-stats-backdrop"
-        visible_window={true}
-        css="background: rgba(0,0,0,0);"
-        hexpand={true}
-        vexpand={true}
-        onButtonPressEvent={onBackdropClick}
+      <box
+        class="input-stats-panel"
+        orientation={Gtk.Orientation.VERTICAL}
+        spacing={SECTION_GAP}
+        css={panelCss}
+        width_request={panelMaxWidth}
+        halign={Gtk.Align.CENTER}
+        valign={Gtk.Align.CENTER}
       >
-        <box
-          class="input-stats-center"
-          hexpand={true}
-          vexpand={true}
-          halign={Gtk.Align.CENTER}
-          valign={Gtk.Align.CENTER}
-        >
-          <eventbox
-            class="input-stats-panel"
-            visible_window={true}
-            onButtonPressEvent={() => true}
-          >
-            <box
-              orientation={Gtk.Orientation.VERTICAL}
-              spacing={SECTION_GAP}
-              css={panelCss}
-              width_request={panelMaxWidth}
-            >
               <box orientation={Gtk.Orientation.HORIZONTAL} spacing={SECTION_GAP}>
                 <label
                   label="Input stats"
@@ -330,13 +308,22 @@ const panelCss = `background: ${BAR_COLOR}; border: 1px solid #3b4252; border-ra
                   halign={Gtk.Align.START}
                   css={titleCss}
                 />
-                <box
-                  orientation={Gtk.Orientation.VERTICAL}
-                  spacing={1}
-                  halign={Gtk.Align.END}
-                >
-                  <label label={startLabel} xalign={1} css={metaCss} />
-                  <label label={elapsedLabel} xalign={1} css={metaCss} />
+                <box orientation={Gtk.Orientation.HORIZONTAL} spacing={SECTION_GAP}>
+                  <box
+                    orientation={Gtk.Orientation.VERTICAL}
+                    spacing={1}
+                    halign={Gtk.Align.END}
+                  >
+                    <label label={startLabel} xalign={1} css={metaCss} />
+                    <label label={elapsedLabel} xalign={1} css={metaCss} />
+                  </box>
+                  <button
+                    class="input-stats-close"
+                    onClicked={closeInputStats}
+                    css="padding: 0;"
+                  >
+                    <label label="×" css={closeCss} />
+                  </button>
                 </box>
               </box>
 
@@ -397,33 +384,30 @@ const panelCss = `background: ${BAR_COLOR}; border: 1px solid #3b4252; border-ra
                 hexpand={true}
                 halign={Gtk.Align.FILL}
               >
-                <label label="Key heatmap" xalign={0} css={labelCss} />
-                <box
-                  orientation={Gtk.Orientation.VERTICAL}
-                  spacing={KEY_GAP}
-                  hexpand={true}
-                  halign={Gtk.Align.FILL}
-                  width_request={keyboardWidth}
-                >
-                  {KEY_ROWS.map((row) => (
-                    <box
-                      orientation={Gtk.Orientation.HORIZONTAL}
-                      spacing={KEY_GAP}
-                      hexpand={true}
-                      halign={Gtk.Align.FILL}
-                      width_request={keyboardWidth}
-                    >
-                      {row.map((cell) => (
-                        <KeyCell {...cell} />
-                      ))}
-                    </box>
-                  ))}
+                  <label label="Key heatmap" xalign={0} css={labelCss} />
+                  <box
+                    orientation={Gtk.Orientation.VERTICAL}
+                    spacing={KEY_GAP}
+                    hexpand={true}
+                    halign={Gtk.Align.FILL}
+                    width_request={keyboardWidth}
+                  >
+                    {KEY_ROWS.map((row) => (
+                      <box
+                        orientation={Gtk.Orientation.HORIZONTAL}
+                        spacing={KEY_GAP}
+                        hexpand={true}
+                        halign={Gtk.Align.FILL}
+                        width_request={keyboardWidth}
+                      >
+                        {row.map((cell) => (
+                          <KeyCell {...cell} />
+                        ))}
+                      </box>
+                    ))}
+                  </box>
                 </box>
-              </box>
-            </box>
-          </eventbox>
-        </box>
-      </eventbox>
+      </box>
     </window>
   )
 }
