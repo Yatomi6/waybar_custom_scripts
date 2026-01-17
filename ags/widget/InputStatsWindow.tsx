@@ -1,6 +1,6 @@
 import app from "ags/gtk3/app"
 import { Gtk, Gdk } from "ags/gtk3"
-import { createComputed } from "gnim"
+import { createComputed, createState } from "gnim"
 import { createPoll } from "ags/time"
 import GLib from "gi://GLib?version=2.0"
 import {
@@ -9,7 +9,12 @@ import {
   WIDGET_COMPRESS_Y,
   WIDGET_SCALE,
 } from "../barConfig"
-import { inputCounts, inputCountsAvailable } from "./inputCountsState"
+import {
+  HEATMAP_COLS,
+  HEATMAP_ROWS,
+  inputCounts,
+  inputCountsAvailable,
+} from "./inputCountsState"
 import { closeInputStats, inputStatsOpen } from "./inputStatsState"
 
 type KeyCellDef = {
@@ -125,6 +130,8 @@ const SECTION_PAD_Y = Math.max(6, Math.round(PANEL_TEXT * 0.6))
 const HEAT_LOW = [46, 52, 64]
 const HEAT_HIGH = [191, 97, 106]
 const HEAT_MAX = [208, 122, 255]
+const CLICK_HEAT_LOW = [43, 48, 60]
+const CLICK_HEAT_HIGH = [191, 97, 106]
 
 const clamp = (value: number, min = 0, max = 1) =>
   Math.min(max, Math.max(min, value))
@@ -138,6 +145,14 @@ const heatColor = (ratio: number, isTop: boolean) => {
   const r = mix(HEAT_LOW[0], base[0], t)
   const g = mix(HEAT_LOW[1], base[1], t)
   const b = mix(HEAT_LOW[2], base[2], t)
+  return `rgb(${r}, ${g}, ${b})`
+}
+
+const clickHeatColor = (ratio: number) => {
+  const t = Math.pow(clamp(ratio), 0.7)
+  const r = mix(CLICK_HEAT_LOW[0], CLICK_HEAT_HIGH[0], t)
+  const g = mix(CLICK_HEAT_LOW[1], CLICK_HEAT_HIGH[1], t)
+  const b = mix(CLICK_HEAT_LOW[2], CLICK_HEAT_HIGH[2], t)
   return `rgb(${r}, ${g}, ${b})`
 }
 
@@ -214,6 +229,33 @@ const panelCss = `background: ${BAR_COLOR}; border: 1px solid #3b4252; border-ra
     }
     if (!Number.isFinite(min)) min = 0
     return { counts, max, min }
+  })
+
+  const [showRightClicks, setShowRightClicks] = createState(false)
+  const clickStats = createComputed(() => {
+    const current = inputCounts()
+    const data = showRightClicks()
+      ? current.clickHeatmapRight
+      : current.clickHeatmapLeft
+    const safe = Array.isArray(data)
+      ? data
+      : Array.from({ length: HEATMAP_COLS * HEATMAP_ROWS }, () => 0)
+    let max = 0
+    for (const value of safe) {
+      const num = Number(value) || 0
+      if (num > max) max = num
+    }
+    return { data: safe, max }
+  })
+
+  const distanceLabel = createComputed(() => {
+    if (!inputCountsAvailable()) return "Distance: --"
+    const distance = inputCounts().distancePx
+    const km = distance / (96 / 2.54) / 100000
+    if (km >= 1) {
+      return `Distance: ${km.toFixed(2)} km`
+    }
+    return `Distance: ${Math.round(distance)} px`
   })
 
   const startLabel = createComputed(() => {
@@ -350,6 +392,7 @@ const panelCss = `background: ${BAR_COLOR}; border: 1px solid #3b4252; border-ra
                     xalign={0}
                     css={labelCss}
                   />
+                  <label label={distanceLabel} xalign={0} css={labelCss} />
                 </box>
 
                 <box
@@ -384,12 +427,64 @@ const panelCss = `background: ${BAR_COLOR}; border: 1px solid #3b4252; border-ra
                 hexpand={true}
                 halign={Gtk.Align.FILL}
               >
-                  <label label="Key heatmap" xalign={0} css={labelCss} />
-                  <box
-                    orientation={Gtk.Orientation.VERTICAL}
-                    spacing={KEY_GAP}
-                    hexpand={true}
-                    halign={Gtk.Align.FILL}
+                <box orientation={Gtk.Orientation.HORIZONTAL} spacing={SECTION_GAP}>
+                  <label label="Click heatmap" xalign={0} css={labelCss} />
+                  <button
+                    class="input-heatmap-toggle"
+                    onClicked={() => setShowRightClicks(!showRightClicks())}
+                    css="padding: 0;"
+                  >
+                    <label
+                      label={showRightClicks.as((value) =>
+                        value ? "Right" : "Left",
+                      )}
+                      css={metaCss}
+                    />
+                  </button>
+                </box>
+                <box
+                  orientation={Gtk.Orientation.VERTICAL}
+                  spacing={1}
+                  hexpand={true}
+                  halign={Gtk.Align.FILL}
+                  width_request={keyboardWidth}
+                >
+                  {Array.from({ length: HEATMAP_ROWS }, (_, row) => (
+                    <box
+                      orientation={Gtk.Orientation.HORIZONTAL}
+                      spacing={1}
+                      hexpand={true}
+                      halign={Gtk.Align.FILL}
+                      width_request={keyboardWidth}
+                    >
+                      {Array.from({ length: HEATMAP_COLS }, (_, col) => {
+                        const index = row * HEATMAP_COLS + col
+                        const css = clickStats.as((stats) => {
+                          const count = Number(stats.data[index]) || 0
+                          const ratio =
+                            stats.max > 0 ? count / stats.max : 0
+                          const bg = count > 0 ? clickHeatColor(ratio) : "#2b303b"
+                          return `background: ${bg}; min-width: 6px; min-height: 4px; border-radius: 2px;`
+                        })
+                        return <box css={css} />
+                      })}
+                    </box>
+                  ))}
+                </box>
+              </box>
+
+              <box
+                orientation={Gtk.Orientation.VERTICAL}
+                spacing={KEY_GAP}
+                hexpand={true}
+                halign={Gtk.Align.FILL}
+              >
+                <label label="Key heatmap" xalign={0} css={labelCss} />
+                <box
+                  orientation={Gtk.Orientation.VERTICAL}
+                  spacing={KEY_GAP}
+                  hexpand={true}
+                  halign={Gtk.Align.FILL}
                     width_request={keyboardWidth}
                   >
                     {KEY_ROWS.map((row) => (

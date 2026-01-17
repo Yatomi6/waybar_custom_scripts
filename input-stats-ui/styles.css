@@ -1,0 +1,262 @@
+:root {
+  --bg: #2e3440;
+  --bg-2: #3b4252;
+  --bg-3: #434c5e;
+  --fg: #d8dee9;
+  --muted: #a7b0bf;
+  --accent: #81a1c1;
+  --accent-2: #bf616a;
+  --border: #4c566a;
+  --shadow: rgba(0, 0, 0, 0.25);
+  --heat-low: #2b303c;
+  --heat-high: #bf616a;
+  --heat-max: #d087f0;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+body {
+  margin: 0;
+  font-family: "JetBrainsMono Nerd Font", "JetBrains Mono", "Fira Code", monospace;
+  color: var(--fg);
+  background: radial-gradient(1200px 800px at 10% -10%, #3b4252 0%, #2e3440 55%),
+    radial-gradient(1000px 700px at 110% 10%, #434c5e 0%, #2e3440 60%);
+  min-height: 100vh;
+}
+
+.page {
+  max-width: 1200px;
+  margin: 0 auto;
+  padding: 32px 24px 48px;
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+}
+
+.hero {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  border: 1px solid var(--border);
+  background: linear-gradient(120deg, rgba(59, 66, 82, 0.9), rgba(46, 52, 64, 0.9));
+  padding: 20px 24px;
+  border-radius: 16px;
+  box-shadow: 0 12px 24px var(--shadow);
+}
+
+.title {
+  font-size: 28px;
+  letter-spacing: 0.5px;
+}
+
+.subtitle {
+  color: var(--muted);
+}
+
+.meta {
+  display: flex;
+  gap: 16px;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  margin-top: 6px;
+}
+
+.meta-group {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.meta-group.right {
+  align-items: flex-end;
+}
+
+#refresh {
+  background: var(--accent);
+  color: #1f2530;
+  border: none;
+  border-radius: 10px;
+  padding: 8px 14px;
+  font-weight: 700;
+  cursor: pointer;
+  margin-top: 4px;
+}
+
+#refresh:hover {
+  filter: brightness(1.05);
+}
+
+.summary {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
+  gap: 12px;
+}
+
+.card {
+  border: 1px solid var(--border);
+  border-radius: 14px;
+  padding: 14px 16px;
+  background: rgba(46, 52, 64, 0.85);
+  box-shadow: inset 0 0 0 1px rgba(129, 161, 193, 0.08);
+}
+
+.card.accent {
+  border-color: var(--accent-2);
+  box-shadow: inset 0 0 0 1px rgba(191, 97, 106, 0.2);
+}
+
+.label {
+  font-size: 12px;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: var(--muted);
+}
+
+.value {
+  font-size: 22px;
+  margin-top: 6px;
+}
+
+.value.minor {
+  font-size: 12px;
+  color: var(--muted);
+  margin-top: 4px;
+}
+
+.panel {
+  border: 1px solid var(--border);
+  border-radius: 16px;
+  padding: 18px 20px;
+  background: rgba(46, 52, 64, 0.9);
+  box-shadow: inset 0 0 0 1px rgba(129, 161, 193, 0.08);
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.heatmaps {
+  display: grid;
+  grid-template-columns: minmax(320px, 1fr) minmax(320px, 1fr);
+  gap: 20px;
+}
+
+.panel-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+
+.panel-title {
+  font-size: 18px;
+}
+
+.panel-meta {
+  color: var(--muted);
+  font-size: 13px;
+}
+
+.toggle {
+  display: inline-flex;
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  overflow: hidden;
+  background: var(--bg-2);
+}
+
+.toggle-btn {
+  border: none;
+  background: transparent;
+  color: var(--muted);
+  padding: 6px 14px;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.toggle-btn.active {
+  background: var(--accent-2);
+  color: #1f2530;
+}
+
+.click-grid {
+  --cols: 96;
+  --rows: 54;
+  display: grid;
+  grid-template-columns: repeat(var(--cols), 1fr);
+  grid-template-rows: repeat(var(--rows), 1fr);
+  gap: 1px;
+  border-radius: 12px;
+  overflow: hidden;
+  width: 100%;
+  height: var(--grid-height, 240px);
+}
+
+.click-cell {
+  background: var(--heat-low);
+  border-radius: 2px;
+}
+
+.keyboard {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.key-row {
+  display: flex;
+  gap: 6px;
+}
+
+.key {
+  flex: var(--span) 1 0;
+  min-height: 34px;
+  border-radius: 8px;
+  border: 1px solid var(--border);
+  background: var(--heat-low);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 12px;
+  color: var(--fg);
+}
+
+.key.hot {
+  color: var(--fg);
+}
+
+.key.max {
+  color: #1f2530;
+}
+
+@media (max-width: 900px) {
+  .click-grid {
+    grid-auto-rows: 5px;
+  }
+
+  .key {
+    min-height: 30px;
+    font-size: 11px;
+  }
+}
+
+@media (max-width: 640px) {
+  .heatmaps {
+    grid-template-columns: 1fr;
+  }
+
+  .page {
+    padding: 24px 16px 40px;
+  }
+
+  .key-row {
+    gap: 4px;
+  }
+
+  .click-grid {
+    grid-auto-rows: 4px;
+  }
+}

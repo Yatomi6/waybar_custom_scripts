@@ -1,0 +1,110 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>TTyper Stats</title>
+  <link rel="stylesheet" href="styles.css" />
+</head>
+<body>
+  <div class="page">
+    <header class="hero">
+      <div class="title">TTyper Stats</div>
+      <div class="subtitle">Global typing stats and per-word accuracy</div>
+      <div class="meta">
+        <div id="last-updated">Last update: -</div>
+        <button id="refresh" type="button">Refresh</button>
+      </div>
+    </header>
+
+    <section class="summary" id="summary">
+      <div class="card">
+        <div class="label">Tests</div>
+        <div class="value" id="stat-tests">0</div>
+      </div>
+      <div class="card">
+        <div class="label">Words typed</div>
+        <div class="value" id="stat-typed">0</div>
+      </div>
+      <div class="card">
+        <div class="label">Words correct</div>
+        <div class="value" id="stat-correct">0</div>
+      </div>
+      <div class="card">
+        <div class="label">Words with errors</div>
+        <div class="value" id="stat-with-errors">0</div>
+      </div>
+      <div class="card">
+        <div class="label">Words incorrect</div>
+        <div class="value" id="stat-incorrect">0</div>
+      </div>
+      <div class="card">
+        <div class="label">Error keystrokes</div>
+        <div class="value" id="stat-error-keys">0</div>
+      </div>
+      <div class="card accent">
+        <div class="label">Accuracy</div>
+        <div class="value" id="stat-accuracy">0%</div>
+      </div>
+    </section>
+
+    <section class="controls" id="controls">
+      <div class="field word-only">
+        <label for="search">Search word</label>
+        <input id="search" type="text" placeholder="type to filter" />
+      </div>
+      <div class="field letter-only">
+        <label for="letter-search">Search letter</label>
+        <input id="letter-search" type="text" placeholder="filter letters" />
+      </div>
+      <label class="checkbox word-only">
+        <input id="only-errors" type="checkbox" />
+        Only words with errors
+      </label>
+      <div class="segmented" id="view-toggle" role="tablist" aria-label="Stats view">
+        <button class="seg-btn active" data-view="words" type="button" role="tab" aria-selected="true">Words</button>
+        <button class="seg-btn" data-view="letters" type="button" role="tab" aria-selected="false">Letters</button>
+      </div>
+    </section>
+
+    <section class="table-wrap" id="word-section">
+      <div class="table-header">
+        <div class="table-title">Word stats</div>
+        <div id="word-count">0 words</div>
+      </div>
+      <div class="table">
+        <div class="row head">
+          <button class="sort" data-sort="word" data-order="none" type="button">Word</button>
+          <button class="sort num" data-sort="typed" data-order="none" type="button">Typed</button>
+          <button class="sort num" data-sort="correct" data-order="none" type="button">Correct</button>
+          <button class="sort num" data-sort="withErrors" data-order="none" type="button">With errors</button>
+          <button class="sort num" data-sort="incorrect" data-order="none" type="button">Incorrect</button>
+          <button class="sort num" data-sort="errorKeys" data-order="none" type="button">Error keys</button>
+          <button class="sort num" data-sort="accuracy" data-order="none" type="button">Accuracy</button>
+        </div>
+        <div id="words-body"></div>
+        <div id="empty" class="empty">No data yet. Run a few tests first.</div>
+      </div>
+    </section>
+
+    <section class="table-wrap hidden" id="letter-section">
+      <div class="table-header">
+        <div class="table-title">Letter errors</div>
+        <div class="table-meta">
+          <div id="letter-count">0 letters</div>
+        </div>
+      </div>
+      <div class="table">
+        <div class="row head letter-head">
+          <button class="sort-letter" data-sort="letter" data-order="none" type="button">Letter</button>
+          <button class="sort-letter num" data-sort="errors" data-order="none" type="button">Errors</button>
+        </div>
+        <div id="letters-body"></div>
+        <div id="letters-empty" class="empty">No letter errors yet.</div>
+      </div>
+    </section>
+  </div>
+
+  <script src="app.js"></script>
+</body>
+</html>

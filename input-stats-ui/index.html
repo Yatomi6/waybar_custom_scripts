@@ -1,0 +1,82 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Input Stats</title>
+  <link rel="stylesheet" href="styles.css" />
+</head>
+<body>
+  <div class="page">
+    <header class="hero">
+      <div class="title">Input stats</div>
+      <div class="subtitle">Mouse, touchpad, and keyboard activity</div>
+      <div class="meta">
+        <div class="meta-group">
+          <div id="started-at">Start: -</div>
+          <div id="elapsed">Elapsed: -</div>
+        </div>
+        <div class="meta-group right">
+          <div id="last-updated">Last update: -</div>
+          <button id="refresh" type="button">Refresh</button>
+        </div>
+      </div>
+    </header>
+
+    <section class="summary" id="summary">
+      <div class="card">
+        <div class="label">Clicks (L | R)</div>
+        <div class="value" id="stat-clicks">0 | 0</div>
+      </div>
+      <div class="card">
+        <div class="label">Mouse (L | R)</div>
+        <div class="value" id="stat-mouse">0 | 0</div>
+      </div>
+      <div class="card">
+        <div class="label">Touchpad (L | R)</div>
+        <div class="value" id="stat-pad">0 | 0</div>
+      </div>
+      <div class="card">
+        <div class="label">Keys</div>
+        <div class="value" id="stat-keys">0</div>
+      </div>
+      <div class="card">
+        <div class="label">Scroll (V)</div>
+        <div class="value" id="stat-scroll-v">0 / 0</div>
+      </div>
+      <div class="card">
+        <div class="label">Scroll (H)</div>
+        <div class="value" id="stat-scroll-h">0 / 0</div>
+      </div>
+      <div class="card accent">
+        <div class="label">Distance</div>
+        <div class="value" id="stat-distance">0 px</div>
+        <div class="value minor" id="stat-distance-m">0.0 m</div>
+      </div>
+    </section>
+
+    <section class="heatmaps">
+      <div class="panel">
+        <div class="panel-header">
+          <div class="panel-title">Click heatmap</div>
+          <div class="toggle" id="click-toggle" role="tablist" aria-label="Click heatmap mode">
+            <button class="toggle-btn active" type="button" data-mode="left" role="tab" aria-selected="true">Left</button>
+            <button class="toggle-btn" type="button" data-mode="right" role="tab" aria-selected="false">Right</button>
+          </div>
+        </div>
+        <div class="click-grid" id="click-grid" style="--cols: 48; --rows: 27"></div>
+      </div>
+
+      <div class="panel">
+        <div class="panel-header">
+          <div class="panel-title">Key heatmap</div>
+          <div class="panel-meta" id="key-meta">Most used: -</div>
+        </div>
+        <div class="keyboard" id="keyboard"></div>
+      </div>
+    </section>
+  </div>
+
+  <script src="app.js"></script>
+</body>
+</html>

@@ -1,11 +1,14 @@
 import GLib from "gi://GLib?version=2.0"
 import Gio from "gi://Gio?version=2.0"
 import GioUnix from "gi://GioUnix?version=2.0"
+import { Gdk } from "ags/gtk3"
 import { createState } from "gnim"
 
 export type InputState = {
   date: string
   startedAt: number
+  screenWidth: number
+  screenHeight: number
   left: number
   right: number
   keys: number
@@ -17,6 +20,9 @@ export type InputState = {
   scrollDown: number
   scrollLeft: number
   scrollRight: number
+  distancePx: number
+  clickHeatmapLeft: number[]
+  clickHeatmapRight: number[]
   keyCounts: Record<string, number>
 }
 
@@ -26,15 +32,34 @@ const STATE_DIR = `${GLib.get_home_dir()}/.local/state/ags`
 const STATE_PATH = `${STATE_DIR}/input-counts.json`
 const SAVE_DELAY_MS = 2000
 const DAY_CHECK_MS = 60000
+const POINTER_POLL_MS = 400
+
+export const HEATMAP_COLS = 96
+export const HEATMAP_ROWS = 54
 
 const todayKey = () => {
   const dt = GLib.DateTime.new_now_local()
   return dt?.format("%Y-%m-%d") ?? ""
 }
 
+const runCommand = (command: string): string | null => {
+  try {
+    const [ok, stdout] = GLib.spawn_command_line_sync(command)
+    if (!ok || !stdout) return null
+    return new TextDecoder().decode(stdout).trim()
+  } catch (_) {
+    return null
+  }
+}
+
+const defaultHeatmap = () =>
+  Array.from({ length: HEATMAP_COLS * HEATMAP_ROWS }, () => 0)
+
 const defaultState = (): InputState => ({
   date: todayKey(),
   startedAt: Date.now(),
+  screenWidth: 0,
+  screenHeight: 0,
   left: 0,
   right: 0,
   keys: 0,
@@ -46,6 +71,9 @@ const defaultState = (): InputState => ({
   scrollDown: 0,
   scrollLeft: 0,
   scrollRight: 0,
+  distancePx: 0,
+  clickHeatmapLeft: defaultHeatmap(),
+  clickHeatmapRight: defaultHeatmap(),
   keyCounts: {},
 })
 
@@ -66,14 +94,28 @@ const normalizeKeyCounts = (value: unknown) => {
 const normalizeState = (raw: Partial<InputState> | null): InputState => {
   const base = defaultState()
   if (!raw) return base
-  if (!raw.date || raw.date !== todayKey()) return base
+  const date = typeof raw.date === "string" && raw.date ? raw.date : base.date
   const startedAt =
     typeof raw.startedAt === "number" && raw.startedAt > 0
       ? raw.startedAt
       : base.startedAt
+  const screenWidth = toNumber(raw.screenWidth)
+  const screenHeight = toNumber(raw.screenHeight)
+  const leftMap =
+    Array.isArray(raw.clickHeatmapLeft) &&
+    raw.clickHeatmapLeft.length === HEATMAP_COLS * HEATMAP_ROWS
+      ? raw.clickHeatmapLeft.map((value) => toNumber(value))
+      : base.clickHeatmapLeft
+  const rightMap =
+    Array.isArray(raw.clickHeatmapRight) &&
+    raw.clickHeatmapRight.length === HEATMAP_COLS * HEATMAP_ROWS
+      ? raw.clickHeatmapRight.map((value) => toNumber(value))
+      : base.clickHeatmapRight
   return {
-    date: raw.date,
+    date,
     startedAt,
+    screenWidth,
+    screenHeight,
     left: toNumber(raw.left),
     right: toNumber(raw.right),
     keys: toNumber(raw.keys),
@@ -85,6 +127,9 @@ const normalizeState = (raw: Partial<InputState> | null): InputState => {
     scrollDown: toNumber(raw.scrollDown),
     scrollLeft: toNumber(raw.scrollLeft),
     scrollRight: toNumber(raw.scrollRight),
+    distancePx: toNumber(raw.distancePx),
+    clickHeatmapLeft: leftMap,
+    clickHeatmapRight: rightMap,
     keyCounts: normalizeKeyCounts(raw.keyCounts),
   }
 }
@@ -194,11 +239,122 @@ const bumpScroll = (vertical: number | null, horizontal: number | null) => {
   queueSave()
 }
 
+const getPointerPosition = () => {
+  const hyprJson = runCommand("hyprctl -j cursorpos")
+  if (hyprJson) {
+    try {
+      const parsed = JSON.parse(hyprJson)
+      const x = Number(parsed?.x)
+      const y = Number(parsed?.y)
+      if (Number.isFinite(x) && Number.isFinite(y)) {
+        return { x, y }
+      }
+    } catch (_) {}
+  }
+  const hyprText = runCommand("hyprctl cursorpos")
+  if (hyprText) {
+    const match = hyprText.match(/(-?\\d+)\\s*,\\s*(-?\\d+)/)
+    if (match) {
+      const x = Number(match[1])
+      const y = Number(match[2])
+      if (Number.isFinite(x) && Number.isFinite(y)) {
+        return { x, y }
+      }
+    }
+  }
+  const display = Gdk.Display.get_default()
+  if (!display) return null
+  const seat = display.get_default_seat()
+  const device = seat?.get_pointer()
+  if (!device) return null
+  try {
+    const [, x, y] = device.get_position()
+    return { x, y }
+  } catch (_) {
+    return null
+  }
+}
+
+const getDisplayBounds = () => {
+  const display = Gdk.Display.get_default()
+  if (!display) return null
+  const count = display.get_n_monitors?.() ?? 0
+  if (count <= 0) return null
+  let minX = Number.POSITIVE_INFINITY
+  let minY = Number.POSITIVE_INFINITY
+  let maxX = Number.NEGATIVE_INFINITY
+  let maxY = Number.NEGATIVE_INFINITY
+  for (let i = 0; i < count; i += 1) {
+    const monitor = display.get_monitor(i)
+    if (!monitor) continue
+    const geom = monitor.get_geometry()
+    minX = Math.min(minX, geom.x)
+    minY = Math.min(minY, geom.y)
+    maxX = Math.max(maxX, geom.x + geom.width)
+    maxY = Math.max(maxY, geom.y + geom.height)
+  }
+  if (!Number.isFinite(minX) || !Number.isFinite(minY)) return null
+  return {
+    x: minX,
+    y: minY,
+    width: Math.max(1, maxX - minX),
+    height: Math.max(1, maxY - minY),
+  }
+}
+
+const recordClickAtPointer = (side: "left" | "right") => {
+  const pos = getPointerPosition()
+  const bounds = getDisplayBounds()
+  if (!pos || !bounds) return
+  updateScreenSize(bounds)
+  const relX = (pos.x - bounds.x) / bounds.width
+  const relY = (pos.y - bounds.y) / bounds.height
+  const col = Math.min(
+    HEATMAP_COLS - 1,
+    Math.max(0, Math.floor(relX * HEATMAP_COLS)),
+  )
+  const row = Math.min(
+    HEATMAP_ROWS - 1,
+    Math.max(0, Math.floor(relY * HEATMAP_ROWS)),
+  )
+  const index = row * HEATMAP_COLS + col
+  setState((prev) => {
+    const next = { ...prev }
+    if (side === "left") {
+      const updated = prev.clickHeatmapLeft.slice()
+      updated[index] = (updated[index] ?? 0) + 1
+      next.clickHeatmapLeft = updated
+    } else {
+      const updated = prev.clickHeatmapRight.slice()
+      updated[index] = (updated[index] ?? 0) + 1
+      next.clickHeatmapRight = updated
+    }
+    return next
+  })
+  queueSave()
+}
+
+const updateScreenSize = (bounds: { width: number; height: number }) => {
+  if (!bounds.width || !bounds.height) return
+  setState((prev) => {
+    if (
+      prev.screenWidth === bounds.width &&
+      prev.screenHeight === bounds.height
+    ) {
+      return prev
+    }
+    return {
+      ...prev,
+      screenWidth: bounds.width,
+      screenHeight: bounds.height,
+    }
+  })
+}
+
 const ensureToday = () => {
   setState((prev) => {
-    const today = todayKey()
-    if (prev.date === today) return prev
-    const next = { ...defaultState(), date: today }
+    if (prev.date) return prev
+    const next = { ...prev, date: todayKey() }
     saveState(next)
     return next
   })
@@ -276,8 +432,13 @@ const watcher = spawnInputStream((line) => {
 
     if (payload.type === "pointer_button" && payload.state === "pressed") {
       const button = Number(payload.button)
-      if (button === 272) bumpClick("left", "mouse")
-      else if (button === 273) bumpClick("right", "mouse")
+      if (button === 272) {
+        bumpClick("left", "mouse")
+        recordClickAtPointer("left")
+      } else if (button === 273) {
+        bumpClick("right", "mouse")
+        recordClickAtPointer("right")
+      }
     }
 
     if (
@@ -325,11 +486,13 @@ const watcher = spawnInputStream((line) => {
     if (isLeft) {
       if (isPressed || (isReleased && !pressed.left)) {
         bumpClick("left", source)
+        recordClickAtPointer("left")
       }
       pressed.left = isPressed ? true : isReleased ? false : pressed.left
     } else if (isRight) {
       if (isPressed || (isReleased && !pressed.right)) {
         bumpClick("right", source)
+        recordClickAtPointer("right")
       }
       pressed.right = isPressed ? true : isReleased ? false : pressed.right
     } else {
@@ -338,11 +501,13 @@ const watcher = spawnInputStream((line) => {
       if (fallback === 272 || fallback === 1) {
         if (isPressed || (isReleased && !pressed.left)) {
           bumpClick("left", source)
+          recordClickAtPointer("left")
         }
         pressed.left = isPressed ? true : isReleased ? false : pressed.left
       } else if (fallback === 273 || fallback === 3) {
         if (isPressed || (isReleased && !pressed.right)) {
           bumpClick("right", source)
+          recordClickAtPointer("right")
         }
         pressed.right = isPressed ? true : isReleased ? false : pressed.right
       }
@@ -352,14 +517,18 @@ const watcher = spawnInputStream((line) => {
 
   if (/POINTER_TAP|TOUCHPAD_TAP|GESTURE_TAP/i.test(text)) {
     const isRight = /finger\s+2/i.test(text) || /finger\s+3/i.test(text)
-    bumpClick(isRight ? "right" : "left", "touchpad")
+    const side = isRight ? "right" : "left"
+    bumpClick(side, "touchpad")
+    recordClickAtPointer(side)
   }
 
   if (/GESTURE_HOLD_BEGIN/i.test(text)) {
     const fingerMatch = text.match(/(\d+)\s*$/)
     const fingers = fingerMatch ? Number(fingerMatch[1]) : 1
     const isRight = Number.isFinite(fingers) && fingers >= 2
-    bumpClick(isRight ? "right" : "left", "touchpad")
+    const side = isRight ? "right" : "left"
+    bumpClick(side, "touchpad")
+    recordClickAtPointer(side)
   }
 
   if (/KEYBOARD_KEY/i.test(text) && /pressed/i.test(text)) {
@@ -380,6 +549,26 @@ if (!watcher) {
 
 GLib.timeout_add(GLib.PRIORITY_DEFAULT, DAY_CHECK_MS, () => {
   ensureToday()
+  return GLib.SOURCE_CONTINUE
+})
+
+let lastPointer = getPointerPosition()
+GLib.timeout_add(GLib.PRIORITY_DEFAULT, POINTER_POLL_MS, () => {
+  const current = getPointerPosition()
+  const bounds = getDisplayBounds()
+  if (bounds) updateScreenSize(bounds)
+  if (!current || !lastPointer) {
+    lastPointer = current
+    return GLib.SOURCE_CONTINUE
+  }
+  const dx = current.x - lastPointer.x
+  const dy = current.y - lastPointer.y
+  const distance = Math.hypot(dx, dy)
+  if (distance > 0) {
+    setState((prev) => ({ ...prev, distancePx: prev.distancePx + distance }))
+    queueSave()
+  }
+  lastPointer = current
   return GLib.SOURCE_CONTINUE
 })
 

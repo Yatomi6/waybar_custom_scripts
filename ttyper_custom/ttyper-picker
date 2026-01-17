@@ -1,0 +1,221 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+SCRIPT_PATH="$0"
+if command -v readlink >/dev/null 2>&1; then
+  SCRIPT_PATH="$(readlink -f "$0")"
+fi
+SCRIPT_DIR="$(cd "$(dirname "$SCRIPT_PATH")" && pwd)"
+
+DATA_DIR="${TYPER_DATA_DIR:-$HOME/ttyper_custom}"
+if [ ! -d "$DATA_DIR" ]; then
+  DATA_DIR="$SCRIPT_DIR"
+fi
+if [ ! -d "$DATA_DIR" ] && [ -d "$HOME/rice/ttyper_custom" ]; then
+  DATA_DIR="$HOME/rice/ttyper_custom"
+fi
+
+ROFI_THEME=""
+if [ -f "$HOME/.config/rofi/menu-rofi.rasi" ]; then
+  ROFI_THEME="$HOME/.config/rofi/menu-rofi.rasi"
+fi
+TYPER_TITLE="${TYPER_TITLE:-ttyper}"
+TYPER_CLASS="${TYPER_CLASS:-ttyper}"
+TYPER_FONT_SIZE="${TYPER_FONT_SIZE:-18}"
+TYPER_COLS="${TYPER_COLS:-140}"
+TYPER_LINES="${TYPER_LINES:-40}"
+TYPER_PADDING_X="${TYPER_PADDING_X:-8}"
+TYPER_PADDING_Y="${TYPER_PADDING_Y:-2}"
+
+err() {
+  local msg="$1"
+  if command -v zenity >/dev/null 2>&1; then
+    zenity --error --text="$msg" >/dev/null 2>&1 || true
+  else
+    printf '%s\n' "$msg" >&2
+  fi
+  exit 1
+}
+
+menu() {
+  local prompt="$1"
+  shift
+  if command -v rofi >/dev/null 2>&1; then
+    if [ -n "$ROFI_THEME" ]; then
+      printf '%s\n' "$@" | rofi -dmenu -i -p "$prompt" -theme "$ROFI_THEME"
+    else
+      printf '%s\n' "$@" | rofi -dmenu -i -p "$prompt"
+    fi
+  elif command -v zenity >/dev/null 2>&1; then
+    zenity --list --title="$prompt" --column="$prompt" "$@"
+  else
+    err "No menu tool found. Install rofi or zenity."
+  fi
+}
+
+action="${TYPER_ACTION:-}"
+if [ -z "$action" ]; then
+  action="$(menu "TTyper" "Test" "Stats")" || exit 0
+fi
+[ -n "$action" ] || exit 0
+case "$action" in
+  [Ss][Tt][Aa][Tt][Ss])
+    action="Stats"
+    ;;
+  *)
+    action="Test"
+    ;;
+esac
+if [ "$action" = "Stats" ]; then
+  if command -v setsid >/dev/null 2>&1; then
+    setsid -f ~/.local/bin/ttyper-stats >/dev/null 2>&1 || true
+  else
+    ~/.local/bin/ttyper-stats >/dev/null 2>&1 &
+  fi
+  exit 0
+fi
+
+if [ ! -d "$DATA_DIR" ]; then
+  err "Data directory not found: $DATA_DIR"
+fi
+
+mapfile -t languages < <(find "$DATA_DIR" -mindepth 1 -maxdepth 1 -type d -printf '%f\n' | sort)
+valid_langs=()
+for lang in "${languages[@]}"; do
+  lang_dir="$DATA_DIR/$lang"
+  if [ -n "$(find "$lang_dir" -mindepth 1 -maxdepth 1 -type d -regex '.*/[0-9]+' -print -quit)" ]; then
+    valid_langs+=("$lang")
+  fi
+done
+languages=("${valid_langs[@]}")
+if [ "${#languages[@]}" -eq 0 ]; then
+  err "No language folders found in $DATA_DIR"
+fi
+preferred_lang="french"
+ordered_langs=()
+has_preferred=0
+for lang in "${languages[@]}"; do
+  if [ "$lang" = "$preferred_lang" ]; then
+    has_preferred=1
+  else
+    ordered_langs+=("$lang")
+  fi
+done
+if [ "$has_preferred" -eq 1 ]; then
+  languages=("$preferred_lang" "${ordered_langs[@]}")
+else
+  languages=("${ordered_langs[@]}")
+fi
+
+lang=""
+if [ -n "${TYPER_LANG:-}" ]; then
+  for l in "${languages[@]}"; do
+    if [ "$l" = "$TYPER_LANG" ]; then
+      lang="$l"
+      break
+    fi
+  done
+fi
+if [ -z "$lang" ]; then
+  lang="$(menu "Langue" "${languages[@]}")" || exit 0
+fi
+[ -n "$lang" ] || exit 0
+
+lang_dir="$DATA_DIR/$lang"
+mapfile -t counts < <(find "$lang_dir" -mindepth 1 -maxdepth 1 -type d -printf '%f\n' | sort -n)
+if [ "${#counts[@]}" -eq 0 ]; then
+  err "No word-count folders in $lang_dir"
+fi
+preferred_count="10"
+ordered_counts=()
+has_preferred=0
+for count in "${counts[@]}"; do
+  if [ "$count" = "$preferred_count" ]; then
+    has_preferred=1
+  else
+    ordered_counts+=("$count")
+  fi
+done
+if [ "$has_preferred" -eq 1 ]; then
+  counts=("$preferred_count" "${ordered_counts[@]}")
+else
+  counts=("${ordered_counts[@]}")
+fi
+
+count=""
+if [ -n "${TYPER_COUNT:-}" ]; then
+  for c in "${counts[@]}"; do
+    if [ "$c" = "$TYPER_COUNT" ]; then
+      count="$c"
+      break
+    fi
+  done
+fi
+if [ -z "$count" ]; then
+  count="$(menu "Mots" "${counts[@]}")" || exit 0
+fi
+[ -n "$count" ] || exit 0
+
+count_dir="$lang_dir/$count"
+mapfile -t files < <(find "$count_dir" -maxdepth 1 -type f -name '*.txt' | sort)
+if [ "${#files[@]}" -eq 0 ]; then
+  err "No text files in $count_dir"
+fi
+
+file="$(printf '%s\n' "${files[@]}" | shuf -n 1)"
+
+cols="$TYPER_COLS"
+lines="$TYPER_LINES"
+if [ "${TYPER_AUTO_SIZE:-1}" = "1" ]; then
+  case "$count" in
+    10|20|50)
+      cols=120
+      lines=32
+      ;;
+    100|200)
+      cols=135
+      lines=38
+      ;;
+    500)
+      cols=145
+      lines=42
+      ;;
+    1000)
+      cols=155
+      lines=46
+      ;;
+  esac
+fi
+
+term_id=""
+if command -v xdg-terminal-exec >/dev/null 2>&1; then
+  term_id="$(xdg-terminal-exec --print-id 2>/dev/null | head -n 1 || true)"
+fi
+
+ttyper_cmd=(ttyper "$file")
+
+if [ "$term_id" = "Alacritty.desktop" ] && command -v alacritty >/dev/null 2>&1; then
+  if command -v uwsm-app >/dev/null 2>&1; then
+    uwsm-app -- alacritty -T "$TYPER_TITLE" --class "$TYPER_CLASS" \
+      -o "font.size=$TYPER_FONT_SIZE" \
+      -o "window.padding.x=$TYPER_PADDING_X" \
+      -o "window.padding.y=$TYPER_PADDING_Y" \
+      -o "window.dimensions.columns=$cols" \
+      -o "window.dimensions.lines=$lines" \
+      -e "${ttyper_cmd[@]}"
+  else
+    alacritty -T "$TYPER_TITLE" --class "$TYPER_CLASS" \
+      -o "font.size=$TYPER_FONT_SIZE" \
+      -o "window.padding.x=$TYPER_PADDING_X" \
+      -o "window.padding.y=$TYPER_PADDING_Y" \
+      -o "window.dimensions.columns=$cols" \
+      -o "window.dimensions.lines=$lines" \
+      -e "${ttyper_cmd[@]}"
+  fi
+elif command -v uwsm-app >/dev/null 2>&1; then
+  uwsm-app -- xdg-terminal-exec --title="$TYPER_TITLE" -- \
+    "${ttyper_cmd[@]}"
+else
+  xdg-terminal-exec --title="$TYPER_TITLE" -- \
+    "${ttyper_cmd[@]}"
+fi

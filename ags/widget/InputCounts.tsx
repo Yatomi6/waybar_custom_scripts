@@ -1,4 +1,6 @@
 import { Gtk } from "ags/gtk3"
+import GLib from "gi://GLib?version=2.0"
+import { execAsync } from "ags/process"
 import { createComputed } from "gnim"
 import {
   BAR_HEIGHT,
@@ -8,7 +10,8 @@ import {
   WIDGET_SCALE,
 } from "../barConfig"
 import { inputCounts, inputCountsAvailable } from "./inputCountsState"
-import { toggleInputStats } from "./inputStatsState"
+const HOME = GLib.get_home_dir()
+const STATS_COMMAND = `${HOME}/rice/input-stats`
 
 const CONTENT_HEIGHT = Math.max(10, BAR_HEIGHT - BAR_PADDING_Y * 2)
 const FONT_SCALE = Math.max(1, WIDGET_SCALE)
@@ -34,7 +37,7 @@ export default function InputCounts() {
       class="input-counts-trigger"
       visible_window={false}
       onButtonPressEvent={() => {
-        toggleInputStats()
+        execAsync(STATS_COMMAND).catch(() => null)
         return true
       }}
     >
